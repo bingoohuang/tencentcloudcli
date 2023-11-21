@@ -10,8 +10,8 @@ import (
 )
 
 type FirewallCmd struct {
-	InstanceId string `help:"InstanceId."`
-	File       string `help:"防火桥规则JSON文件，请查询后修改, e.g. firewall-xxx.json"`
+	InstanceId string `short:"i" help:"InstanceId."`
+	File       string `short:"f" help:"防火桥规则JSON文件，请查询后修改, e.g. firewall-xxx.json"`
 }
 
 type InstanceFirewallRules struct {
