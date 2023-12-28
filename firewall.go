@@ -41,23 +41,23 @@ func (r *FirewallCmd) Run(*Context) error {
 }
 
 func (r *FirewallCmd) listRules() error {
-	req := lighthouse.NewDescribeFirewallRulesRequest()
+	rq := lighthouse.NewDescribeFirewallRulesRequest()
 	if r.InstanceId == "" {
 		if parts := getSecretParts(); len(parts) > 2 {
 			r.InstanceId = parts[2]
 		}
 	}
-	req.InstanceId = &r.InstanceId
+	rq.InstanceId = &r.InstanceId
 
 	// https://console.cloud.tencent.com/api/explorer?Product=lighthouse&Version=2020-03-24&Action=DescribeFirewallRules
 	// 返回的resp是一个DescribeFirewallRulesResponse的实例，与请求对象对应
-	response, err := getClient().DescribeFirewallRules(req)
+	response, err := getClient().DescribeFirewallRules(rq)
 	if err != nil {
 		return err
 	}
 
 	rules := InstanceFirewallRules{
-		InstanceId: req.InstanceId,
+		InstanceId: rq.InstanceId,
 	}
 	for _, rule := range response.Response.FirewallRuleSet {
 		rules.Rules = append(rules.Rules, lighthouse.FirewallRule{
@@ -77,40 +77,32 @@ func (r *FirewallCmd) listRules() error {
 	}
 
 	// Create a temporary file
-	file, errs := os.CreateTemp("", "temp-*.txt")
-	if errs != nil {
+	file, err := TempFile(jsonRules)
+	if err != nil {
 		return err
 	}
 
-	defer file.Close()
+	log.Printf("cmd: %s", shellquote.QuoteMust(os.Args[0], "firewall", "-f", file))
 
-	if _, err := file.Write(jsonRules); err != nil {
-		return err
-	}
-
-	file.Close()
-
-	log.Printf("cmd: %s firewall -f %q", os.Args[0], file.Name())
-
-	c := gocmd.New(shellquote.QuoteMust("code", file.Name()))
+	c := gocmd.New(shellquote.QuoteMust("code", file))
 	if err = c.Run(context.Background()); err != nil {
 		return nil
 	}
 
 	confirmOptions := &confirm.Options{}
-	confirm, err := confirmOptions.Confirm("确认修改防火墙规则么?")
+	yes, err := confirmOptions.Confirm("确认修改防火墙规则么?")
 	if err != nil {
 		return err
 	}
 
-	if confirm != "YES" {
+	if yes != "YES" {
 		return nil
 	}
 
-	if err := r.modifyRules(file.Name()); err != nil {
+	if err := r.modifyRules(file); err != nil {
 		return err
 	}
-	return os.Remove(file.Name())
+	return os.Remove(file)
 }
 
 func checkPublicIP() {
@@ -187,4 +179,20 @@ func (r *FirewallCmd) modifyRules(file string) error {
 	resp, _ := json.Marshal(rsp)
 	log.Printf("ModifyFirewallRules: %s", resp)
 	return nil
+}
+
+// TempFile 创建临时文件，写入内容 data
+func TempFile(data []byte) (string, error) {
+	f, err := os.CreateTemp("", "*")
+	if err != nil {
+		return "", err
+	}
+
+	defer f.Close()
+
+	if _, err := f.Write(data); err != nil {
+		return "", err
+	}
+
+	return f.Name(), nil
 }
