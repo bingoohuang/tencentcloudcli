@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/bingoohuang/gum/confirm"
 	"github.com/commander-cli/cmd"
@@ -15,6 +19,7 @@ import (
 type FirewallCmd struct {
 	InstanceId string `short:"i" help:"InstanceId."`
 	File       string `short:"f" help:"防火墙规则JSON文件, 请查询后修改, e.g. firewall-xxx.json"`
+	PublicIP   bool   `short:"p" help:"查询公网出口IP"`
 }
 
 type InstanceFirewallRules struct {
@@ -23,6 +28,11 @@ type InstanceFirewallRules struct {
 }
 
 func (r *FirewallCmd) Run(*Context) error {
+	if r.PublicIP {
+		checkPublicIP()
+		return nil
+	}
+
 	if r.File != "" {
 		return r.modifyRules(r.File)
 	}
@@ -58,16 +68,7 @@ func (r *FirewallCmd) listRules() error {
 		})
 	}
 
-	type PingResult struct {
-		RemoteAddr   string `json:"RemoteAddr"`
-		ForwardedFor string `json:"X-Forwarded-For"`
-		RealIP       string `json:"X-Real-IP"`
-	}
-
-	var pingResult PingResult
-	reqClient.R().SetSuccessResult(&pingResult).Get("https://d5k.top/ping")
-	pingResultJSON, _ := json.Marshal(pingResult)
-	log.Printf("ping: %s", pingResultJSON)
+	checkPublicIP()
 
 	jsonRules, err := json.MarshalIndent(rules, "", "    ")
 	if err != nil {
@@ -111,7 +112,44 @@ func (r *FirewallCmd) listRules() error {
 	return nil
 }
 
-var reqClient = req.C()
+func checkPublicIP() {
+	var wg sync.WaitGroup
+	for _, ipUrl := range []string{
+		"https://d5k.top/ping",
+		"https://api.ipify.org?format=json",
+		"ip.gs",
+		"ip.sb",
+		"cip.cc",
+		"icanhazip.com",
+		"api.ipify.org",
+		"ipinfo.io/ip",
+		"ifconfig.me",
+		"ifconfig.co",
+		"ipecho.net/plain",
+		"whatismyip.akamai.com",
+		"inet-ip.info",
+		"myip.ipip.net",
+	} {
+		wg.Add(1)
+		go func(ipUrl string) {
+			defer wg.Done()
+			if !strings.HasPrefix(ipUrl, "http") {
+				ipUrl = "http://" + ipUrl
+			}
+			if res, _ := reqClient.R().SetHeader("User-Agent", "curl").Get(ipUrl); res != nil {
+				if data := res.Bytes(); len(data) > 0 {
+					re := regexp.MustCompile(`\s+`)
+					data := re.ReplaceAll(data, []byte(" "))
+					log.Printf("%s: %s", ipUrl, data)
+				}
+			}
+		}(ipUrl)
+	}
+
+	wg.Wait()
+}
+
+var reqClient = req.C().SetTimeout(15 * time.Second)
 
 func (r *FirewallCmd) modifyRules(file string) error {
 	if _, err := os.Stat(file); err != nil {
