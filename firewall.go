@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 
+	"github.com/bingoohuang/gocmd"
+	"github.com/bingoohuang/gocmd/shellquote"
 	"github.com/bingoohuang/gum/confirm"
-	"github.com/commander-cli/cmd"
 	"github.com/imroc/req/v3"
 	lighthouse "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse/v20200324"
 )
@@ -88,27 +89,27 @@ func (r *FirewallCmd) listRules() error {
 
 	file.Close()
 
-	log.Printf("请修改防火墙规则: %s", file.Name())
+	log.Printf("cmd: %s firewall -f %q", os.Args[0], file.Name())
 
-	c := cmd.NewCommand("code " + file.Name())
-	if err = c.Execute(); err == nil {
-		confirmOptions := &confirm.Options{}
-		confirm, err := confirmOptions.Confirm("确认修改防火墙规则么?")
-		if err != nil {
-			return err
-		}
-
-		if confirm == "YES" {
-			if err := r.modifyRules(file.Name()); err != nil {
-				return err
-			}
-			os.Remove(file.Name())
-			return err
-		}
+	c := gocmd.New(shellquote.QuoteMust("code", file.Name()))
+	if err = c.Run(context.Background()); err != nil {
+		return nil
 	}
 
-	fmt.Printf("单独执行 `tencentcloudcli firewall --file=%s` 完成防火墙规则修改!\n", file.Name())
-	return nil
+	confirmOptions := &confirm.Options{}
+	confirm, err := confirmOptions.Confirm("确认修改防火墙规则么?")
+	if err != nil {
+		return err
+	}
+
+	if confirm != "YES" {
+		return nil
+	}
+
+	if err := r.modifyRules(file.Name()); err != nil {
+		return err
+	}
+	return os.Remove(file.Name())
 }
 
 var reqClient = req.C()
