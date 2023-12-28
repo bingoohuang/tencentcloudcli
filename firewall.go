@@ -108,6 +108,7 @@ func (r *FirewallCmd) listRules() error {
 func checkPublicIP() {
 	var wg sync.WaitGroup
 	for _, ipUrl := range []string{
+		"https://api.maao.cc/ip/",
 		"https://d5k.top/ping",
 		"https://api.ipify.org?format=json",
 		"ip.gs",
