@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -48,6 +49,10 @@ func getEnv(name, defaultValue string) string {
 
 func getSecretParts() []string {
 	secret := os.Getenv("LIGHTHOUSE_SECRET")
+	if secret == "" {
+		data, _ := os.ReadFile(filepath.Join(os.TempDir(), "lighthouse.env"))
+		secret = string(data)
+	}
 	if secret == "" {
 		log.Fatalf("please set env, e.g. export LIGHTHOUSE_SECRET=secretId:secretKey")
 	}
