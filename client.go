@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/bingoohuang/tencentcloudcli/tmpjson"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	lighthouse "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse/v20200324"
@@ -23,14 +23,13 @@ func getClient() *lighthouse.Client {
 		// 代码泄露可能会导致 SecretId 和 SecretKey 泄露，并威胁账号下所有资源的安全性。以下代码示例仅供参考，
 		// 建议采用更安全的方式来使用密钥，请参见：https://cloud.tencent.com/document/product/1278/85305
 		// 密钥可前往官网控制台 https://console.cloud.tencent.com/cam/capi 进行获取
-		parts := getSecretParts()
-		c := common.NewCredential(parts[0], parts[1])
+		c := common.NewCredential(LightHouse.SecretID, LightHouse.SecretKey)
 		// 实例化一个client选项，可选的，没有特殊需求可以跳过
 		p := profile.NewClientProfile()
-		p.HttpProfile.Endpoint = getEnv("LIGHTHOUSE_ENDPOINT", "lighthouse.tencentcloudapi.com")
+		p.HttpProfile.Endpoint = LightHouse.Endpoint
 		// 实例化要请求产品的client对象,clientProfile是可选的
 		var err error
-		_client, err = lighthouse.NewClient(c, getEnv("REGION", "ap-beijing"), p)
+		_client, err = lighthouse.NewClient(c, LightHouse.Region, p)
 		if err != nil {
 			panic(err)
 		}
@@ -39,26 +38,37 @@ func getClient() *lighthouse.Client {
 	return _client
 }
 
-func getEnv(name, defaultValue string) string {
-	if env := os.Getenv(name); env != "" {
-		return env
+var LightHouse = func() (lh LightHouseConf) {
+	if env := os.Getenv("LIGHTHOUSE_SECRET"); env != "" {
+		parts := strings.Split(env, ":")
+		if len(parts) < 2 {
+			log.Fatalf("bad $LIGHTHOUSE_SECRET")
+		}
+		lh.SecretID = parts[0]
+		lh.SecretKey = parts[1]
+		if len(parts) > 2 {
+			lh.InstanceId = parts[2]
+		}
+	} else {
+		if _, err := tmpjson.Read("lighthouse.json", &lh); err != nil {
+			log.Fatalf("please set env, e.g. export LIGHTHOUSE_SECRET=secretId:secretKey")
+		}
 	}
 
-	return defaultValue
-}
+	if lh.Region == "" {
+		lh.Region = "ap-beijing"
+	}
+	if lh.Endpoint == "" {
+		lh.Endpoint = "lighthouse.tencentcloudapi.com"
+	}
 
-func getSecretParts() []string {
-	secret := os.Getenv("LIGHTHOUSE_SECRET")
-	if secret == "" {
-		data, _ := os.ReadFile(filepath.Join(os.TempDir(), "lighthouse.env"))
-		secret = string(data)
-	}
-	if secret == "" {
-		log.Fatalf("please set env, e.g. export LIGHTHOUSE_SECRET=secretId:secretKey")
-	}
-	parts := strings.Split(secret, ":")
-	if len(parts) < 2 {
-		log.Fatalf("bad $LIGHTHOUSE_SECRET")
-	}
-	return parts
+	return lh
+}()
+
+type LightHouseConf struct {
+	SecretID   string `json:"secretID"`
+	SecretKey  string `json:"secretKey"`
+	InstanceId string `json:"instanceId"`
+	Region     string `json:"region"`
+	Endpoint   string `json:"endpoint"`
 }

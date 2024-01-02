@@ -43,9 +43,7 @@ func (r *FirewallCmd) Run(*Context) error {
 func (r *FirewallCmd) listRules() error {
 	rq := lighthouse.NewDescribeFirewallRulesRequest()
 	if r.InstanceId == "" {
-		if parts := getSecretParts(); len(parts) > 2 {
-			r.InstanceId = parts[2]
-		}
+		r.InstanceId = LightHouse.InstanceId
 	}
 	rq.InstanceId = &r.InstanceId
 

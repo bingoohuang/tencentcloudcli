@@ -17,10 +17,4 @@ $ tencentcloudcli firewall --file=firewall_rules_20231108145925.json
         "RequestId": "58496587-4bcf-47e7-9e78-1303eda4cb54"
     }
 }
-
 ```
-
-环境变量:
-
-1. 地域 `REGION` 默认  `ap-beijing`
-2. API地址 `LIGHTHOUSE_ENDPOINT` 默认 `lighthouse.tencentcloudapi.com`
