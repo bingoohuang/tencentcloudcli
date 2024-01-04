@@ -38,28 +38,45 @@ func getClient() *lighthouse.Client {
 	return _client
 }
 
+const jsonFile = "lighthouse.json"
+
 var LightHouse = func() (lh LightHouseConf) {
+	jsonFileRewrite := false
+
 	if env := os.Getenv("LIGHTHOUSE_SECRET"); env != "" {
 		parts := strings.Split(env, ":")
 		if len(parts) < 2 {
-			log.Fatalf("bad $LIGHTHOUSE_SECRET")
+			log.Printf("bad $LIGHTHOUSE_SECRET")
+		} else {
+			lh.SecretID = parts[0]
+			lh.SecretKey = parts[1]
+			if len(parts) > 2 {
+				lh.InstanceId = parts[2]
+			}
+			jsonFileRewrite = true
 		}
-		lh.SecretID = parts[0]
-		lh.SecretKey = parts[1]
-		if len(parts) > 2 {
-			lh.InstanceId = parts[2]
-		}
-	} else {
-		if _, err := tmpjson.Read("lighthouse.json", &lh); err != nil {
+	}
+
+	if lh.SecretID == "" || lh.SecretKey == "" || lh.InstanceId == "" || lh.Region == "" {
+		if _, err := tmpjson.Read(jsonFile, &lh); err != nil {
 			log.Fatalf("please set env, e.g. export LIGHTHOUSE_SECRET=secretId:secretKey")
 		}
+		jsonFileRewrite = false
 	}
 
 	if lh.Region == "" {
 		lh.Region = "ap-beijing"
+		jsonFileRewrite = true
 	}
 	if lh.Endpoint == "" {
 		lh.Endpoint = "lighthouse.tencentcloudapi.com"
+		jsonFileRewrite = true
+	}
+
+	if jsonFileRewrite {
+		if err := tmpjson.Write(jsonFile, lh); err != nil {
+			log.Printf("write %s error: %v", jsonFile, err)
+		}
 	}
 
 	return lh
