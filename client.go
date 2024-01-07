@@ -58,10 +58,7 @@ var LightHouse = func() (lh LightHouseConf) {
 	}
 
 	if lh.SecretID == "" || lh.SecretKey == "" || lh.InstanceId == "" || lh.Region == "" {
-		if _, err := tmpjson.Read(jsonFile, &lh); err != nil {
-			log.Fatalf("please set env, e.g. export LIGHTHOUSE_SECRET=secretId:secretKey")
-		}
-		jsonFileRewrite = false
+		tmpjson.Read(jsonFile, &lh)
 	}
 
 	if lh.Region == "" {
