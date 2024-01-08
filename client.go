@@ -43,6 +43,8 @@ const jsonFile = "lighthouse.json"
 var LightHouse = func() (lh LightHouseConf) {
 	jsonFileRewrite := false
 
+	tmpjson.Read(jsonFile, &lh)
+
 	if env := os.Getenv("LIGHTHOUSE_SECRET"); env != "" {
 		parts := strings.Split(env, ":")
 		if len(parts) < 2 {
@@ -55,10 +57,6 @@ var LightHouse = func() (lh LightHouseConf) {
 			}
 			jsonFileRewrite = true
 		}
-	}
-
-	if lh.SecretID == "" || lh.SecretKey == "" || lh.InstanceId == "" || lh.Region == "" {
-		tmpjson.Read(jsonFile, &lh)
 	}
 
 	if lh.Region == "" {
