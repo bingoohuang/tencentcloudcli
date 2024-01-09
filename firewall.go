@@ -67,7 +67,7 @@ func (r *FirewallCmd) listRules() error {
 		})
 	}
 
-	checkPublicIP()
+	go checkPublicIP()
 
 	jsonRules, err := json.MarshalIndent(rules, "", "    ")
 	if err != nil {
