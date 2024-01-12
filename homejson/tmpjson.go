@@ -1,19 +1,29 @@
-package tmpjson
+package homejson
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"os"
 	"path/filepath"
 )
 
+var home = func() string {
+	h, err := homedir.Dir()
+	if err != nil {
+		h = os.TempDir()
+	}
+
+	return h
+}()
+
 func Write[T any](name string, v T) error {
-	f := filepath.Join(os.TempDir(), name)
+	f := filepath.Join(home, name)
 	return WriteJSONFile(f, v)
 }
 
 func Read[T any](name string, v *T) (*T, error) {
-	f := filepath.Join(os.TempDir(), name)
+	f := filepath.Join(home, name)
 	return ReadJSONFile(f, v)
 }
 

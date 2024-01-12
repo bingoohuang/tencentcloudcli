@@ -28,7 +28,7 @@ type InstanceFirewallRules struct {
 	Rules      []lighthouse.FirewallRule
 }
 
-func (r *FirewallCmd) Run(*Context) error {
+func (r *FirewallCmd) Run(_ *Context) error {
 	if r.PublicIP {
 		checkPublicIP()
 		return nil

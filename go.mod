@@ -7,6 +7,7 @@ require (
 	github.com/bingoohuang/gocmd v0.0.0-20231228133801-f5be734d6e2f
 	github.com/bingoohuang/gum v0.0.0-20231225020545-2c9959bc2d72
 	github.com/imroc/req/v3 v3.42.2
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.785
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse v1.0.785
 )

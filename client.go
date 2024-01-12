@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bingoohuang/tencentcloudcli/tmpjson"
+	"github.com/bingoohuang/tencentcloudcli/homejson"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	lighthouse "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse/v20200324"
@@ -38,12 +38,12 @@ func getClient() *lighthouse.Client {
 	return _client
 }
 
-const jsonFile = "lighthouse.json"
+const jsonFile = ".lighthouse.json"
 
 var LightHouse = func() (lh LightHouseConf) {
 	jsonFileRewrite := false
 
-	tmpjson.Read(jsonFile, &lh)
+	homejson.Read(jsonFile, &lh)
 
 	if env := os.Getenv("LIGHTHOUSE_SECRET"); env != "" {
 		parts := strings.Split(env, ":")
@@ -69,7 +69,7 @@ var LightHouse = func() (lh LightHouseConf) {
 	}
 
 	if jsonFileRewrite {
-		if err := tmpjson.Write(jsonFile, lh); err != nil {
+		if err := homejson.Write(jsonFile, lh); err != nil {
 			log.Printf("write %s error: %v", jsonFile, err)
 		}
 	}
