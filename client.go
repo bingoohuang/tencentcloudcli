@@ -55,6 +55,9 @@ var LightHouse = func() (lh LightHouseConf) {
 			if len(parts) > 2 {
 				lh.InstanceId = parts[2]
 			}
+			if len(parts) > 3 {
+				lh.Region = parts[3]
+			}
 			jsonFileRewrite = true
 		}
 	}
