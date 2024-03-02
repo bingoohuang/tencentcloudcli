@@ -109,6 +109,7 @@ func checkPublicIP() {
 		"https://api.maao.cc/ip/",
 		"https://d5k.top/ping",
 		"https://api.ipify.org?format=json",
+		"https://httpbin.org/ip",
 		"ip.gs",
 		"ip.sb",
 		"cip.cc",
@@ -141,7 +142,7 @@ func checkPublicIP() {
 	wg.Wait()
 }
 
-var reqClient = req.C().SetTimeout(15 * time.Second)
+var reqClient = req.C().SetTimeout(15 * time.Second).SetProxy(nil) // Disable proxy
 
 func (r *FirewallCmd) modifyRules(file string) error {
 	if _, err := os.Stat(file); err != nil {
