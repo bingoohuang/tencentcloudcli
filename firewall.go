@@ -3,18 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
-	"os"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
-
 	"github.com/bingoohuang/gocmd"
 	"github.com/bingoohuang/gocmd/shellquote"
 	"github.com/bingoohuang/gum/confirm"
-	"github.com/imroc/req/v3"
+	"github.com/bingoohuang/tencentcloudcli/publicip"
 	lighthouse "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse/v20200324"
+	"log"
+	"os"
 )
 
 type FirewallCmd struct {
@@ -30,7 +25,7 @@ type InstanceFirewallRules struct {
 
 func (r *FirewallCmd) Run(_ *Context) error {
 	if r.PublicIP {
-		checkPublicIP()
+		publicip.CheckPublicIP()
 		return nil
 	}
 
@@ -67,7 +62,7 @@ func (r *FirewallCmd) listRules() error {
 		})
 	}
 
-	go checkPublicIP()
+	go publicip.CheckPublicIP()
 
 	jsonRules, err := json.MarshalIndent(rules, "", "    ")
 	if err != nil {
@@ -102,47 +97,6 @@ func (r *FirewallCmd) listRules() error {
 	}
 	return os.Remove(file)
 }
-
-func checkPublicIP() {
-	var wg sync.WaitGroup
-	for _, ipUrl := range []string{
-		"https://api.maao.cc/ip/",
-		"https://d5k.top/ping",
-		"https://api.ipify.org?format=json",
-		"https://httpbin.org/ip",
-		"ip.gs",
-		"ip.sb",
-		"cip.cc",
-		"icanhazip.com",
-		"api.ipify.org",
-		"ipinfo.io/ip",
-		"ifconfig.me",
-		"ifconfig.co",
-		"ipecho.net/plain",
-		"whatismyip.akamai.com",
-		"inet-ip.info",
-		"myip.ipip.net",
-	} {
-		wg.Add(1)
-		go func(ipUrl string) {
-			defer wg.Done()
-			if !strings.HasPrefix(ipUrl, "http") {
-				ipUrl = "http://" + ipUrl
-			}
-			if res, _ := reqClient.R().SetHeader("User-Agent", "curl").Get(ipUrl); res != nil {
-				if data := res.Bytes(); len(data) > 0 {
-					re := regexp.MustCompile(`\s+`)
-					data := re.ReplaceAll(data, []byte(" "))
-					log.Printf("%s: %s", ipUrl, data)
-				}
-			}
-		}(ipUrl)
-	}
-
-	wg.Wait()
-}
-
-var reqClient = req.C().SetTimeout(15 * time.Second).SetProxy(nil) // Disable proxy
 
 func (r *FirewallCmd) modifyRules(file string) error {
 	if _, err := os.Stat(file); err != nil {
