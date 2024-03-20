@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var CLI struct {
