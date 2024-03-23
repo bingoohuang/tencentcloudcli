@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"os"
+
 	"github.com/bingoohuang/gocmd"
 	"github.com/bingoohuang/gocmd/shellquote"
 	"github.com/bingoohuang/gum/confirm"
 	"github.com/bingoohuang/tencentcloudcli/publicip"
 	lighthouse "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/lighthouse/v20200324"
-	"log"
-	"os"
 )
 
 type FirewallCmd struct {
