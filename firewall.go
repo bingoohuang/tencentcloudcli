@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/bingoohuang/gocmd"
 	"github.com/bingoohuang/gocmd/shellquote"
@@ -19,9 +20,56 @@ type FirewallCmd struct {
 	PublicIP   bool   `short:"p" help:"查询公网出口IP"`
 }
 
+type FirewallRule struct {
+	// 协议，取值：TCP，UDP，ICMP，ALL。
+	Protocol []*string `json:"Protocol,omitnil,omitempty" name:"Protocol"`
+
+	// 端口，取值：ALL，单独的端口，逗号分隔的离散端口，减号分隔的端口范围。
+	Port *string `json:"Port,omitnil,omitempty" name:"Port"`
+
+	// IPv4网段或 IPv4地址(互斥)。
+	// 示例值：0.0.0.0/0。
+	//
+	// 和Ipv6CidrBlock互斥，两者都不指定时，如果Protocol不是ICMPv6，则取默认值0.0.0.0/0。
+	CidrBlock *string `json:"CidrBlock,omitnil,omitempty" name:"CidrBlock"`
+
+	// 取值：ACCEPT，DROP。默认为 ACCEPT。
+	Action *string `json:"Action,omitnil,omitempty" name:"Action"`
+
+	// 防火墙规则描述。
+	FirewallRuleDescription *string `json:"FirewallRuleDescription,omitnil,omitempty" name:"FirewallRuleDescription"`
+
+	merged bool
+}
+
 type InstanceFirewallRules struct {
 	InstanceId *string
-	Rules      []lighthouse.FirewallRule
+	Rules      []FirewallRule
+}
+
+func (r *InstanceFirewallRules) mergeRules() {
+	for i, ji := range r.Rules {
+		for j := i + 1; j < len(r.Rules); j++ {
+			jr := r.Rules[j]
+			if !jr.merged && *jr.Action == *ji.Action &&
+				*jr.Port == *ji.Port && *jr.CidrBlock == *ji.CidrBlock {
+				r.Rules[j].merged = true
+				r.Rules[i].Protocol = append(ji.Protocol, jr.Protocol...)
+				if !strings.Contains(*ji.FirewallRuleDescription, *jr.FirewallRuleDescription) {
+					*r.Rules[i].FirewallRuleDescription += "; " + *jr.FirewallRuleDescription
+				}
+			}
+		}
+	}
+
+	rules := make([]FirewallRule, 0, len(r.Rules))
+	for _, ji := range r.Rules {
+		if !ji.merged {
+			rules = append(rules, ji)
+		}
+	}
+
+	r.Rules = rules
 }
 
 func (r *FirewallCmd) Run(_ *Context) error {
@@ -54,14 +102,15 @@ func (r *FirewallCmd) listRules() error {
 		InstanceId: rq.InstanceId,
 	}
 	for _, rule := range response.Response.FirewallRuleSet {
-		rules.Rules = append(rules.Rules, lighthouse.FirewallRule{
-			Protocol:                rule.Protocol,
+		rules.Rules = append(rules.Rules, FirewallRule{
+			Protocol:                []*string{rule.Protocol},
 			Port:                    rule.Port,
 			CidrBlock:               rule.CidrBlock,
 			Action:                  rule.Action,
 			FirewallRuleDescription: rule.FirewallRuleDescription,
 		})
 	}
+	rules.mergeRules()
 
 	go publicip.CheckPublicIP()
 
@@ -117,13 +166,15 @@ func (r *FirewallCmd) modifyRules(file string) error {
 	rq := lighthouse.NewModifyFirewallRulesRequest()
 	rq.InstanceId = rules.InstanceId
 	for _, rule := range rules.Rules {
-		rq.FirewallRules = append(rq.FirewallRules, &lighthouse.FirewallRule{
-			Protocol:                rule.Protocol,
-			Port:                    rule.Port,
-			CidrBlock:               rule.CidrBlock,
-			Action:                  rule.Action,
-			FirewallRuleDescription: rule.FirewallRuleDescription,
-		})
+		for _, protocol := range rule.Protocol {
+			rq.FirewallRules = append(rq.FirewallRules, &lighthouse.FirewallRule{
+				Protocol:                protocol,
+				Port:                    rule.Port,
+				CidrBlock:               rule.CidrBlock,
+				Action:                  rule.Action,
+				FirewallRuleDescription: rule.FirewallRuleDescription,
+			})
+		}
 	}
 
 	rsp, err := getClient().ModifyFirewallRules(rq)
